@@ -19,8 +19,7 @@ process.on('exit', () => {
     try {
       axios.post(`https://api.telegram.org/bot${token}/sendMessage`, null, {
         params: {
-          chatid: id,
-          text: "Лёг"
+          chatid: id, text: "Лёг"
         }
       })
     } catch (e) {
@@ -34,8 +33,7 @@ adminIds.forEach(id => {
   try {
     axios.post(`https://api.telegram.org/bot${token}/sendMessage`, null, {
       params: {
-        chat_id: id,
-        text: "Встал"
+        chat_id: id, text: "Встал"
       }
     })
   } catch (e) {
@@ -44,6 +42,7 @@ adminIds.forEach(id => {
 
 })
 const bot = new Telegraf(token)
+let fileCache = {}
 var stage = new Stage(scenes.scenes)
 bot.use(session())
 bot.use(stage.middleware());
@@ -123,12 +122,7 @@ async function onStartLogic(ctx) {
     keyboard == null ? ctx.reply("Введите кодовое слово") : ctx.reply("Введите кодовое слово", keyboard);
   } else {
     let text = "Вы не подписаны на канал"
-    let inlineKB = Markup.inlineKeyboard(
-      [
-        [Markup.urlButton("Ссылка на канал", `https://t.me/${cfg.channel_username}`)],
-        [Markup.callbackButton("Проверить подписку", "checkSubscription")]
-      ]
-    ).resize().extra()
+    let inlineKB = Markup.inlineKeyboard([[Markup.urlButton("Ссылка на канал", `https://t.me/${cfg.channel_username}`)], [Markup.callbackButton("Проверить подписку", "checkSubscription")]]).resize().extra()
     if (keyboard == null) {
       ctx.reply(text, inlineKB)
     } else {
@@ -141,35 +135,47 @@ async function onStartLogic(ctx) {
 
 function getAdminKeyboard(user) {
   if (adminIds.includes(user.id)) {
-    return Markup.keyboard(
-      [
-        ["Панель администратора"]
-      ]
-    ).resize().extra()
+    return Markup.keyboard([["Панель администратора"]]).resize().extra()
   }
   return null;
 
 }
 
 async function handleFilesSending(ctx) {
-  let filesDir = __dirname+"/files"
+  let filesDir = __dirname + "/files"
   fs.readdir(filesDir, (error, files) => {
     if (error) {
-      massSendToAdmins('Ошибка чтения директории:'+ error);
+      massSendToAdmins('Ошибка чтения директории:' + error);
       return;
     }
     let filenames = []
     files.forEach((file) => {
       filenames.push(file)
     });
-    files.forEach(async file=>{
+    files.forEach(async file => {
       try {
-        if (file.toLowerCase().endsWith(".jpg") || file.toLowerCase().endsWith(".png")|| file.toLowerCase().endsWith(".jpeg")){
-          await ctx.replyWithPhoto({source: `${filesDir}/${file}`})
-        }else if (file.toLowerCase().endsWith(".mp4")){
-          await ctx.replyWithVideo({source: `${filesDir}/${file}`})
-        }else {
-          await ctx.replyWithDocument({source: `${filesDir}/${file}`})
+        if (file.toLowerCase().endsWith(".jpg") || file.toLowerCase().endsWith(".png") || file.toLowerCase().endsWith(".jpeg")) {
+          if (!fileCache[file]) {
+            let res = await ctx.replyWithPhoto({source: `${filesDir}/${file}`})
+            fileCache[file] = res.photo[0].file_id
+          } else {
+            await ctx.replyWithPhoto(fileCache[file])
+          }
+        } else if (file.toLowerCase().endsWith(".mp4")) {
+          if (!fileCache[file]) {
+            let res = await ctx.replyWithVideo({source: `${filesDir}/${file}`})
+            fileCache[file] = res.video.file_id
+          } else {
+            await ctx.replyWithVideo(fileCache[file])
+          }
+
+        } else {
+          if (!fileCache[file]) {
+            let res = await ctx.replyWithDocument({source: `${filesDir}/${file}`})
+            fileCache[file] = res.document.file_id
+          } else {
+            await ctx.replyWithDocument(fileCache[file])
+          }
         }
       } catch (e) {
         await massSendToAdmins("Ошибка при отправке документа:" + e)
@@ -182,10 +188,7 @@ async function handleFilesSending(ctx) {
 async function checkSubscription(ctx) {
   let userId = ctx.from.id;
   let link = '@' + cfg.channel_username;
-  let url = 'https://api.telegram.org/bot' +
-    token +
-    '/getChatMember?user_id=' +
-    userId + '&chat_id=' + link;
+  let url = 'https://api.telegram.org/bot' + token + '/getChatMember?user_id=' + userId + '&chat_id=' + link;
   try {
     response = await axios.get(url)
   } catch (e) {
@@ -276,7 +279,8 @@ async function sendPosts(usersIds, postsIds) {
   }
   return;
 }
-async function massSendToAdmins(text){
+
+async function massSendToAdmins(text) {
   cfg.admins.forEach(admin => {
     bot.telegram.sendMessage(admin, text)
   })

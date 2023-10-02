@@ -14,6 +14,7 @@ if (!fs.existsSync(databaseFile)) {
             username      TEXT,
             language_code TEXT,
             is_bot        INTEGER,
+            is_premium    INTEGER,
             is_blocked    INTEGER
         );
     `);
