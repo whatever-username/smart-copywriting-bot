@@ -68,7 +68,13 @@ function deleteCode(code) {
 function incUsage(name, userId) {
     return new Promise((resolve, reject) => {
         const statement = db.prepare('INSERT INTO code_stats (code, user_id) VALUES (?, ?)');
-        statement.run(name, userId);
+        statement.run(name, userId, (error) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve();
+            }
+        });
         statement.finalize();
     });
 }
