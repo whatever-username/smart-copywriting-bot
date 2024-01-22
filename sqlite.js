@@ -6,7 +6,7 @@ const db = new sqlite3.Database(databaseFile, sqlite3.OPEN_READWRITE);
 
 function getCodes() {
     return new Promise((resolve, reject) => {
-        db.all("select c.id as id, count(cs.code) as usages from codes c left join code_stats cs on c.id = cs.code group by cs.code order by c.id", (error, rows) => {
+        db.all("select c.id as id, coalesce(count(cs.code),0) as usages from codes c left join code_stats cs on c.id = cs.code group by c.id order by c.id", (error, rows) => {
             if (error) {
                 reject(error);
             } else {
