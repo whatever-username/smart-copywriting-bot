@@ -30,6 +30,22 @@ function getExportStats() {
 }
 function addCode(name) {
     return new Promise((resolve, reject) => {
+        try {
+            db.get('SELECT id FROM codes WHERE id = ?', [name], (err, row) => {
+                if (err) {
+                    reject(err);
+                    return;
+                }
+
+                if (row) {
+                    reject(new Error('Code already exists'));
+                    return;
+                }
+            })
+        }catch (e){
+            throw e
+        }
+
         const statement = db.prepare('INSERT INTO codes (id) VALUES (?)');
         const codesData = [
             {id: name},

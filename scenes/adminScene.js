@@ -74,7 +74,19 @@ module.exports = {
             let splitted = ctx.update.message.text.split(" ");
             let args = splitted.slice(1, splitted.length)
             for (const value of args) {
-                await db.addCode(value);
+                let res
+                try {
+                    res= await db.addCode(value);
+
+                }catch (e){
+                    if (e.message == 'Code already exists'){
+                        ctx.reply('Уже есть')
+                    }else {
+                        ctx.reply('Не удалось')
+                    }
+                    return
+                }
+
             }
             let newCodes = (await db.getCodes()).map(s => s.id);
             bot.codes = newCodes;
